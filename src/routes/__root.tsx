@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useLocation,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
@@ -129,6 +130,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
 
   useEffect(() => {
     // Meta Pixel: initialize once for the entire application.
@@ -155,9 +157,18 @@ function RootComponent() {
       script.src = "https://connect.facebook.net/en_US/fbevents.js";
       document.head.appendChild(script);
       fbq("init", "1468167984824577");
-      fbq("track", "PageView");
     }
   }, []);
+
+  // Track every client-side route view (TanStack Router navigation).
+  useEffect(() => {
+    const pixelWindow = window as Window & {
+      fbq?: (...args: unknown[]) => void;
+    };
+    if (typeof pixelWindow.fbq === "function") {
+      pixelWindow.fbq("track", "PageView");
+    }
+  }, [location.href]);
 
   return (
     <QueryClientProvider client={queryClient}>
