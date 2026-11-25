@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft, MapPin, PackageCheck, ShieldCheck, Truck, LockKeyhole, CreditCard, Wallet, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { brl, specs } from "@/components/produto/data";
+import { createPixCharge } from "@/lib/fruitfy.functions";
+import { isValidCpf, maskCpf, onlyDigits, toCents, type PixChargeResult } from "@/lib/fruitfy";
+import { PixPayment } from "@/components/produto/PixPayment";
 import tikTokShopLogoBase64 from "../../public/tiktok-shop-logo.b64?raw";
-type Address = { name: string; phone: string; cep: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string; };
-const emptyAddress: Address = { name: "", phone: "", cep: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" };
+type Address = { name: string; email: string; cpf: string; phone: string; cep: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string; };
+const emptyAddress: Address = { name: "", email: "", cpf: "", phone: "", cep: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" };
 export const Route = createFileRoute("/checkout")({
   head: () => ({ meta: [{ title: "Finalizar compra – Escova Elétrica 9 em 1" }] }),
   component: Checkout,
@@ -17,7 +20,7 @@ function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [notice, setNotice] = useState("");
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const current = specs.find((item) => item.id === spec) ?? specs[0];
+  const current = specs.find((item) => item.id === spec) ?? specs[0]!;
   const subtotal = current.price * qty;
   const originalTotal = current.old * qty;
   useEffect(() => {
@@ -29,6 +32,8 @@ function Checkout() {
   }, []);
   const addressFields = [
     { key: "name" as const, label: "Nome completo", placeholder: "Seu nome completo", required: true, wide: true },
+    { key: "email" as const, label: "E-mail", placeholder: "voce@email.com", required: true, type: "email" },
+    { key: "cpf" as const, label: "CPF", placeholder: "000.000.000-00", required: true },
     { key: "phone" as const, label: "Celular", placeholder: "(00) 00000-0000", required: true, type: "tel" },
     { key: "cep" as const, label: "CEP", placeholder: "00000-000", required: true },
     { key: "number" as const, label: "Número", placeholder: "Nº", required: true },
@@ -37,6 +42,7 @@ function Checkout() {
   const updateAddress = (key: keyof Address, rawValue: string) => {
     let value = rawValue;
     if (key === "cep") { const digits = rawValue.replace(/\D/g, "").slice(0, 8); value = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits; }
+    if (key === "cpf") value = maskCpf(rawValue);
     if (key === "phone") { const digits = rawValue.replace(/\D/g, "").slice(0, 11); value = digits.length > 10 ? digits.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3") : digits.length > 6 ? digits.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3") : digits.length > 2 ? digits.replace(/^(\d{2})(\d+)/, "($1) $2") : digits; }
     setAddress((previous) => ({ ...previous, [key]: value }));
     setNotice("");
@@ -59,7 +65,20 @@ function Checkout() {
     }, 250);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [address.cep]);
-  const addressComplete = Boolean(address.name.trim() && address.phone.replace(/\D/g, "").length >= 10 && address.cep.replace(/\D/g, "").length === 8 && address.street.trim() && address.number.trim() && address.neighborhood.trim() && address.city.trim() && address.state.trim().length === 2);
+  const [charge, setCharge] = useState<PixChargeResult | null>(null);
+  const [paying, setPaying] = useState(false);
+  const pay = async () => {
+    if (!addressComplete) return setNotice("Preencha nome, e-mail, CPF, celular, CEP e número para continuar.");
+    if (!/^\S+@\S+\.\S+$/.test(address.email)) return setNotice("E-mail inválido.");
+    if (!isValidCpf(address.cpf)) return setNotice("CPF inválido.");
+    setPaying(true); setNotice("");
+    try {
+      const r = await createPixCharge({ data: { name: address.name.trim(), email: address.email.trim(), phone: `55${onlyDigits(address.phone)}`, cpf: onlyDigits(address.cpf), items: [{ value: toCents(current.price), quantity: qty }] } });
+      if (r.ok) setCharge(r); else setNotice(r.error ?? "Não foi possível gerar o Pix.");
+    } catch { setNotice("Não foi possível gerar o Pix. Tente novamente."); }
+    finally { setPaying(false); }
+  };
+  const addressComplete = Boolean(address.name.trim() && address.email.trim() && onlyDigits(address.cpf).length === 11 && address.phone.replace(/\D/g, "").length >= 10 && address.cep.replace(/\D/g, "").length === 8 && address.street.trim() && address.number.trim() && address.neighborhood.trim() && address.city.trim() && address.state.trim().length === 2);
 return (
       <main className="min-h-screen bg-[#f5f5f6] pb-32 text-[#161823]">
         <header className="sticky top-0 z-30 border-b border-gray-100 bg-white">
@@ -129,9 +148,9 @@ return (
                     onChange={(event) => updateAddress(field.key, event.target.value)}
                     
                     placeholder={field.placeholder}
-                    autoComplete={field.key === "name" ? "name" : field.key === "phone" ? "tel" : field.key === "cep" ? "postal-code" : field.key === "street" ? "street-address" : "off"}
+                    autoComplete={field.key === "name" ? "name" : field.key === "phone" ? "tel" : field.key === "cep" ? "postal-code" : "off"}
                     required={field.required}
-                    maxLength={field.key === "state" ? 2 : field.key === "cep" ? 9 : undefined}
+                    maxLength={field.key === "cep" ? 9 : undefined}
                     className="min-h-11 w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] outline-none transition focus:border-[#fe2c55] focus:ring-2 focus:ring-[#fe2c55]/10"
                   />
                 </label>
@@ -195,9 +214,7 @@ return (
                 
               </button>
             </div>
-            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800">
-              A interface de pagamento está preparada visualmente, mas a geração de cobranças ainda depende da conexão com um gateway. Nenhum pagamento será processado nesta etapa.
-            </p>
+            
           </section>
 
           <section className="rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-5">
@@ -214,6 +231,7 @@ return (
             {notice && <p role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">{notice}</p>}
           </section>
 
+          {charge && <PixPayment charge={charge} />}
           <div className="flex items-center justify-center gap-1.5 pb-2 text-[10px] text-gray-400">
             <ShieldCheck className="size-3.5" /> Confira seus dados antes de continuar
           </div>
@@ -225,8 +243,8 @@ return (
               <p className="text-[10px] text-gray-500">Total a pagar</p>
               <p className="text-lg font-extrabold leading-tight tabular-nums">R$ {brl(subtotal)}</p>
             </div>
-            <button type="button" onClick={() => setNotice(!addressComplete ? "Preencha nome, celular, CEP e número para continuar." : "O checkout visual está pronto, mas ainda falta conectar o gateway de pagamento para gerar o Pix ou processar o cartão. Nenhuma cobrança foi criada.")} className="flex min-h-12 min-w-[180px] items-center justify-center rounded-full bg-[#fe2c55] px-6 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#e9274d] active:scale-[0.99]">
-              Continuar
+            <button type="button" onClick={pay} disabled={paying || Boolean(charge)} className="flex min-h-12 min-w-[180px] items-center justify-center gap-2 rounded-full bg-[#fe2c55] px-6 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#e9274d] active:scale-[0.99] disabled:opacity-60">
+              {paying && <Loader2 className="size-4 animate-spin" />}{charge ? "Pix gerado" : paying ? "Gerando Pix" : "Pagar com Pix"}
             </button>
           </div>
         </div>

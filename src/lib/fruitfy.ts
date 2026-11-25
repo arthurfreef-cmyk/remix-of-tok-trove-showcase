@@ -12,7 +12,7 @@ export const FRUITFY_API_BASE = "https://api.fruitfy.io";
  * dashboard (Produtos) and is required by POST /api/pix/charge.
  * Empty means "not configured yet" — the checkout refuses to charge until set.
  */
-export const FRUITFY_PRODUCT_ID = "";
+export const FRUITFY_PRODUCT_ID = "a32e191e-0e17-4b25-8ce1-71f49aae8526";
 
 export interface ChargeItem {
   /** Fruitfy product id. */
@@ -32,23 +32,23 @@ export interface PixChargeInput {
 
 export interface PixChargeResult {
   ok: boolean;
-  error?: string;
+  error?: string | undefined;
   /** Order uuid used to poll payment status. */
-  orderId?: string;
-  status?: string;
+  orderId?: string | undefined;
+  status?: string | undefined;
   /** PIX "copia e cola" payload, when Fruitfy returns one. */
-  pixCode?: string;
+  pixCode?: string | undefined;
   /** Base64/data-URI QR image, when Fruitfy returns one. */
-  qrCodeImage?: string;
-  amountCents?: number;
+  qrCodeImage?: string | undefined;
+  amountCents?: number | undefined;
 }
 
 export interface OrderStatusResult {
   ok: boolean;
-  error?: string;
-  status?: string;
-  paidAt?: string | null;
-  totalPaidCents?: number;
+  error?: string | undefined;
+  status?: string | undefined;
+  paidAt?: string | null | undefined;
+  totalPaidCents?: number | undefined;
 }
 
 export const onlyDigits = (value: string): string => value.replace(/\D/g, "");

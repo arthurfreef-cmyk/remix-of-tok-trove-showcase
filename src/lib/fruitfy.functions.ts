@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   FRUITFY_API_BASE,
+  FRUITFY_PRODUCT_ID,
   type OrderStatusResult,
   type PixChargeInput,
   type PixChargeResult,
@@ -21,7 +22,7 @@ const chargeSchema = z.object({
   items: z
     .array(
       z.object({
-        id: z.string().min(1, "ID do produto ausente."),
+        id: z.string().max(100).optional(),
         value: z.number().int().positive("Valor inválido."),
         quantity: z.number().int().min(1).max(20),
       }),
@@ -82,6 +83,7 @@ const PIX_CODE_KEYS = [
   "copiaCola",
   "pix_code",
   "emv",
+  "code",
 ];
 
 const PIX_QR_KEYS = [
@@ -162,12 +164,17 @@ export const createPixCharge = createServerFn({ method: "POST" })
       };
     }
 
+    // Product id: the secret wins, then the constant in fruitfy.ts.
+    const productId = process.env["FRUITFY_PRODUCT_ID"] || FRUITFY_PRODUCT_ID;
+    if (!productId) {
+      return { ok: false, error: "Falta o ID do produto da Fruitfy." };
+    }
     const body: PixChargeInput = {
       name: data.name,
       email: data.email,
       phone: data.phone,
       cpf: data.cpf,
-      items: data.items,
+      items: data.items.map((i) => ({ id: productId, value: i.value, quantity: i.quantity })),
     };
 
     try {

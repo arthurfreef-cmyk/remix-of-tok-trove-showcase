@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [spec, setSpec] = useState("1");
   const [qty, setQty] = useState(1);
-  const current = specs.find((item) => item.id === spec) ?? specs[0];
+  const current = specs.find((item) => item.id === spec) ?? specs[0]!;
   const subtotal = current.price * qty;
   const originalTotal = current.old * qty;
 
