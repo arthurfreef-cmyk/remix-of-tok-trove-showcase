@@ -133,6 +133,16 @@ function RootComponent() {
   const location = useLocation();
 
   useEffect(() => {
+    // UTMify Pixel: expose the pixel ID before loading the official script.
+    (window as Window & { pixelId?: string }).pixelId = "6b073cacc4eb5faa0fa3d2dc";
+    const utmifyScript = document.createElement("script");
+    utmifyScript.src = "https://cdn.utmify.com.br/scripts/pixel/pixel.js";
+    utmifyScript.async = true;
+    utmifyScript.defer = true;
+    document.head.appendChild(utmifyScript);
+  }, []);
+
+  useEffect(() => {
     // Meta Pixel: initialize once for the entire application.
     if (typeof window !== "undefined" && !(window as Window & { fbq?: (...args: unknown[]) => void }).fbq) {
       const pixelWindow = window as Window & {
