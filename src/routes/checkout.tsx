@@ -31,6 +31,8 @@ function Checkout() {
   if (!current) throw new Error("Produto não encontrado.");
   const subtotal = current.price * qty;
   const originalTotal = current.old * qty;
+  const shippingCost = shipping === "sedex" ? 8.59 : 0;
+  const total = subtotal + shippingCost;
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestedSpec = params.get("spec");
@@ -44,7 +46,11 @@ function Checkout() {
     { key: "cpf" as const, label: "CPF", placeholder: "000.000.000-00", required: true },
     { key: "phone" as const, label: "Celular", placeholder: "(00) 00000-0000", required: true, type: "tel" },
     { key: "cep" as const, label: "CEP", placeholder: "00000-000", required: true },
+    { key: "street" as const, label: "Rua / Logradouro", placeholder: "Preenchido pelo CEP", required: true, wide: true },
     { key: "number" as const, label: "Número", placeholder: "Nº", required: true },
+    { key: "neighborhood" as const, label: "Bairro", placeholder: "Preenchido pelo CEP", required: true },
+    { key: "city" as const, label: "Cidade", placeholder: "Preenchido pelo CEP", required: true },
+    { key: "state" as const, label: "UF", placeholder: "UF", required: true },
     { key: "complement" as const, label: "Complemento (opcional)", placeholder: "Apto, bloco, referência", wide: true },
   ];
   const updateAddress = (key: keyof Address, rawValue: string) => {
@@ -81,7 +87,7 @@ function Checkout() {
     if (!isValidCpf(address.cpf)) return setNotice("CPF inválido.");
     setPaying(true); setNotice("");
     try {
-      const r = await createPixCharge({ data: { name: address.name.trim(), email: address.email.trim(), phone: `55${onlyDigits(address.phone)}`, cpf: onlyDigits(address.cpf), items: [createFruitfyItem(current.price, qty)] } });
+      const r = await createPixCharge({ data: { name: address.name.trim(), email: address.email.trim(), phone: `55${onlyDigits(address.phone)}`, cpf: onlyDigits(address.cpf), items: [createFruitfyItem(current.price, qty), ...(shipping === "sedex" ? [createFruitfyItem(8.59, 1)] : [])] } });
       if (r.ok) setCharge(r); else setNotice(r.error ?? "Não foi possível gerar o Pix.");
     } catch { setNotice("Não foi possível gerar o Pix. Tente novamente."); }
     finally { setPaying(false); }
@@ -156,7 +162,7 @@ return (
                     onChange={(event) => updateAddress(field.key, event.target.value)}
                     
                     placeholder={field.placeholder}
-                    autoComplete={field.key === "name" ? "name" : field.key === "phone" ? "tel" : field.key === "cep" ? "postal-code" : "off"}
+                    autoComplete={field.key === "name" ? "name" : field.key === "phone" ? "tel" : field.key === "cep" ? "postal-code" : field.key === "street" ? "address-line1" : field.key === "number" ? "address-line2" : field.key === "neighborhood" ? "address-level3" : field.key === "city" ? "address-level2" : field.key === "state" ? "address-level1" : "off"}
                     required={field.required}
                     maxLength={field.key === "cep" ? 9 : undefined}
                     className="min-h-11 w-full rounded-lg border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] outline-none transition focus:border-[#fe2c55] focus:ring-2 focus:ring-[#fe2c55]/10"
@@ -184,8 +190,9 @@ return (
                   <span className="flex h-9 w-[82px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#003f7d] px-1.5"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Sedex_logo.png" alt="SEDEX Correios" className="h-auto w-full object-contain" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13px] font-bold">Frete expresso SEDEX</span>
-                    <span className="mt-0.5 block text-[11px] text-gray-500">Entrega expressa • valor a confirmar</span>
+                    <span className="mt-0.5 block text-[11px] text-gray-500">Entrega expressa</span>
                   </span>
+                  <span className="text-xs font-bold tabular-nums">R$ 8,59</span>
                 </label>
                 <label className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3.5 transition ${shipping === "jadlog" ? "border-[#15966b] bg-[#15966b]/[0.045]" : "border-gray-200"}`}>
                   <input type="radio" name="shipping" checked={shipping === "jadlog"} onChange={() => setShipping("jadlog")} className="size-4 accent-[#15966b]" />
@@ -233,8 +240,8 @@ return (
             <div className="space-y-2.5 text-[12px]">
               <div className="flex justify-between gap-3"><span className="text-gray-500">Subtotal ({qty} {qty === 1 ? "item" : "itens"})</span><span className="font-medium tabular-nums">R$ {brl(subtotal)}</span></div>
               <div className="flex justify-between gap-3"><span className="text-gray-500">Desconto</span><span className="font-semibold text-[#15966b] tabular-nums">− R$ {brl(originalTotal - subtotal)}</span></div>
-              <div className="flex justify-between gap-3"><span className="text-gray-500">Frete</span><span className={shipping === "jadlog" ? "font-semibold text-[#15966b]" : "font-semibold text-gray-600"}>{shipping === "jadlog" ? "Grátis (Jadlog)" : "SEDEX — valor a confirmar"}</span></div>
-              <div className="flex items-center justify-between border-t border-dashed border-gray-200 pt-3 text-[15px] font-bold"><span>Total do pedido</span><span className="tabular-nums">R$ {brl(subtotal)}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-gray-500">Frete</span><span className={shipping === "jadlog" ? "font-semibold text-[#15966b]" : "font-semibold text-gray-700"}>{shipping === "jadlog" ? "Grátis (Jadlog)" : "R$ 8,59 (SEDEX)"}</span></div>
+              <div className="flex items-center justify-between border-t border-dashed border-gray-200 pt-3 text-[15px] font-bold"><span>Total do pedido</span><span className="tabular-nums">R$ {brl(total)}</span></div>
             </div>
             {notice && <p role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">{notice}</p>}
           </section>
@@ -249,7 +256,7 @@ return (
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] text-gray-500">Total a pagar</p>
-              <p className="text-lg font-extrabold leading-tight tabular-nums">R$ {brl(subtotal)}</p>
+              <p className="text-lg font-extrabold leading-tight tabular-nums">R$ {brl(total)}</p>
             </div>
             <button type="button" onClick={pay} disabled={paying || Boolean(charge)} className="flex min-h-12 min-w-[180px] items-center justify-center gap-2 rounded-full bg-[#fe2c55] px-6 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#e9274d] active:scale-[0.99] disabled:opacity-60">
               {paying && <Loader2 className="size-4 animate-spin" />}{charge ? "Pix gerado" : paying ? "Gerando Pix" : "Pagar com Pix"}
