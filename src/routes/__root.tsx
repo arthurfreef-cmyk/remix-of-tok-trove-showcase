@@ -132,6 +132,24 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
 
+  // Initialize UTMify Pixel once and avoid duplicate script tags.
+  useEffect(() => {
+    (window as Window & { pixelId?: string }).pixelId = "6b082a016d4aeee58848057e";
+
+    const scriptUrl = "https://cdn.utmify.com.br/scripts/pixel/pixel.js";
+    const alreadyLoaded = document.querySelector<HTMLScriptElement>(
+      'script[src="' + scriptUrl + '"]',
+    );
+
+    if (!alreadyLoaded) {
+      const script = document.createElement("script");
+      script.src = scriptUrl;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
   // Initialize Meta Pixel once and queue events until the official library loads.
   useEffect(() => {
     const pixelWindow = window as Window & {
