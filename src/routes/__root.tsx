@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useLocation,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
@@ -111,6 +112,15 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src="https://www.facebook.com/tr?id=1762868428116202&ev=PageView&noscript=1"
+            alt=""
+          />
+        </noscript>
         {children}
         <Scripts />
       </body>
@@ -120,6 +130,54 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+
+  // Initialize Meta Pixel once and queue events until the official library loads.
+  useEffect(() => {
+    const pixelWindow = window as Window & {
+      fbq?: ((...args: unknown[]) => void) & {
+        callMethod?: (...args: unknown[]) => void;
+        queue?: unknown[][];
+        push?: (...args: unknown[]) => void;
+        loaded?: boolean;
+        version?: string;
+      };
+      _fbq?: unknown;
+    };
+
+    if (pixelWindow.fbq) return;
+
+    const fbq = ((...args: unknown[]) => {
+      if (fbq.callMethod) {
+        fbq.callMethod(...args);
+      } else {
+        (fbq.queue ??= []).push(args);
+      }
+    }) as NonNullable<typeof pixelWindow.fbq>;
+
+    pixelWindow.fbq = fbq;
+    pixelWindow._fbq = fbq;
+    fbq.push = fbq;
+    fbq.loaded = true;
+    fbq.version = "2.0";
+    fbq.queue = [];
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    document.head.appendChild(script);
+
+    fbq("init", "1762868428116202");
+  }, []);
+
+  // Track the initial page and every client-side route change.
+  useEffect(() => {
+    const fbq = (window as Window & { fbq?: (...args: unknown[]) => void }).fbq;
+    if (typeof fbq === "function") {
+      fbq("track", "PageView");
+    }
+  }, [location.href]);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
