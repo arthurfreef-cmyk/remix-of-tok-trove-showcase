@@ -6,7 +6,6 @@ import {
   useRouter,
   HeadContent,
   Scripts,
-  useLocation,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
@@ -112,15 +111,6 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <noscript>
-          <img
-            height="1"
-            width="1"
-            style={{ display: "none" }}
-            src="https://www.facebook.com/tr?id=1468167984824577&ev=PageView&noscript=1"
-            alt=""
-          />
-        </noscript>
         {children}
         <Scripts />
       </body>
@@ -130,56 +120,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const location = useLocation();
-
-  useEffect(() => {
-    // UTMify Pixel: expose the pixel ID before loading the official script.
-    (window as Window & { pixelId?: string }).pixelId = "6b073cacc4eb5faa0fa3d2dc";
-    const utmifyScript = document.createElement("script");
-    utmifyScript.src = "https://cdn.utmify.com.br/scripts/pixel/pixel.js";
-    utmifyScript.async = true;
-    utmifyScript.defer = true;
-    document.head.appendChild(utmifyScript);
-  }, []);
-
-  useEffect(() => {
-    // Meta Pixel: initialize once for the entire application.
-    if (typeof window !== "undefined" && !(window as Window & { fbq?: (...args: unknown[]) => void }).fbq) {
-      const pixelWindow = window as Window & {
-        fbq?: ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue?: unknown[]; push?: unknown; loaded?: boolean; version?: string };
-        _fbq?: unknown;
-      };
-      const fbq = function (...args: unknown[]) {
-        if (fbq.callMethod) {
-          fbq.callMethod(...args);
-        } else {
-          (fbq.queue ??= []).push(args);
-        }
-      } as NonNullable<typeof pixelWindow.fbq>;
-      pixelWindow.fbq = fbq;
-      pixelWindow._fbq = fbq;
-      fbq.push = fbq;
-      fbq.loaded = true;
-      fbq.version = "2.0";
-      fbq.queue = [];
-      const script = document.createElement("script");
-      script.async = true;
-      script.src = "https://connect.facebook.net/en_US/fbevents.js";
-      document.head.appendChild(script);
-      fbq("init", "1468167984824577");
-    }
-  }, []);
-
-  // Track every client-side route view (TanStack Router navigation).
-  useEffect(() => {
-    const pixelWindow = window as Window & {
-      fbq?: (...args: unknown[]) => void;
-    };
-    if (typeof pixelWindow.fbq === "function") {
-      pixelWindow.fbq("track", "PageView");
-    }
-  }, [location.href]);
-
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
