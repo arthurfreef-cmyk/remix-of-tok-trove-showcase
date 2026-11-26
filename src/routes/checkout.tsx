@@ -3,13 +3,20 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft, MapPin, PackageCheck, ShieldCheck, Truck, LockKeyhole, CreditCard, Wallet, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { brl, specs } from "@/components/produto/data";
 import { createPixCharge } from "@/lib/fruitfy.functions";
-import { isValidCpf, maskCpf, onlyDigits, toCents, type PixChargeResult } from "@/lib/fruitfy";
+import { createFruitfyItem, isValidCpf, maskCpf, onlyDigits, type PixChargeResult } from "@/lib/fruitfy";
 import { PixPayment } from "@/components/produto/PixPayment";
 import tikTokShopLogoBase64 from "../../public/tiktok-shop-logo.b64?raw";
 type Address = { name: string; email: string; cpf: string; phone: string; cep: string; street: string; number: string; complement: string; neighborhood: string; city: string; state: string; };
 const emptyAddress: Address = { name: "", email: "", cpf: "", phone: "", cep: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" };
 export const Route = createFileRoute("/checkout")({
-  head: () => ({ meta: [{ title: "Finalizar compra – Escova Elétrica 9 em 1" }] }),
+  head: () => ({ meta: [
+    { title: "Finalizar compra – Escova Elétrica 9 em 1" },
+    { name: "description", content: "Finalize seu pedido da Escova Elétrica 9 em 1 e gere seu pagamento Pix." },
+    { property: "og:title", content: "Finalizar compra – Escova Elétrica 9 em 1" },
+    { property: "og:description", content: "Confira seu pedido e pague a Escova Elétrica 9 em 1 com Pix." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: Checkout,
 });
 function Checkout() {
@@ -20,7 +27,8 @@ function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [notice, setNotice] = useState("");
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const current = specs.find((item) => item.id === spec) ?? specs[0]!;
+  const current = specs.find((item) => item.id === spec) ?? specs[0];
+  if (!current) throw new Error("Produto não encontrado.");
   const subtotal = current.price * qty;
   const originalTotal = current.old * qty;
   useEffect(() => {
@@ -73,7 +81,7 @@ function Checkout() {
     if (!isValidCpf(address.cpf)) return setNotice("CPF inválido.");
     setPaying(true); setNotice("");
     try {
-      const r = await createPixCharge({ data: { name: address.name.trim(), email: address.email.trim(), phone: `55${onlyDigits(address.phone)}`, cpf: onlyDigits(address.cpf), items: [{ value: toCents(current.price), quantity: qty }] } });
+      const r = await createPixCharge({ data: { name: address.name.trim(), email: address.email.trim(), phone: `55${onlyDigits(address.phone)}`, cpf: onlyDigits(address.cpf), items: [createFruitfyItem(current.price, qty)] } });
       if (r.ok) setCharge(r); else setNotice(r.error ?? "Não foi possível gerar o Pix.");
     } catch { setNotice("Não foi possível gerar o Pix. Tente novamente."); }
     finally { setPaying(false); }

@@ -28,3 +28,5 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- Build checkout payment items with the client-safe Fruitfy item helper so both variations share the provider product ID while preserving their unit prices; the server keeps the secret override authoritative.

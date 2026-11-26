@@ -56,6 +56,13 @@ export const onlyDigits = (value: string): string => value.replace(/\D/g, "");
 /** Reais -> cents. Rounds so 48.9 never becomes 4889.999... */
 export const toCents = (amount: number): number => Math.round(amount * 100);
 
+/** Both shop variations use the same Fruitfy product, with their own unit price. */
+export const createFruitfyItem = (price: number, quantity: number): ChargeItem => ({
+  id: FRUITFY_PRODUCT_ID,
+  value: toCents(price),
+  quantity,
+});
+
 export const fromCents = (cents: number): string =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 

@@ -155,7 +155,7 @@ function RootComponent() {
         } else {
           (fbq.queue ??= []).push(args);
         }
-      } as typeof pixelWindow.fbq;
+      } as NonNullable<typeof pixelWindow.fbq>;
       pixelWindow.fbq = fbq;
       pixelWindow._fbq = fbq;
       fbq.push = fbq;
