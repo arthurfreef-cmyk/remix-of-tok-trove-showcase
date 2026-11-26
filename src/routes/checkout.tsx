@@ -88,7 +88,19 @@ function Checkout() {
     setPaying(true); setNotice("");
     try {
       const r = await createPixCharge({ data: { name: address.name.trim(), email: address.email.trim(), phone: `55${onlyDigits(address.phone)}`, cpf: onlyDigits(address.cpf), items: [createFruitfyItem(current.price, qty), ...(shipping === "sedex" ? [createFruitfyItem(8.59, 1)] : [])] } });
-      if (r.ok) setCharge(r); else setNotice(r.error ?? "Não foi possível gerar o Pix.");
+      if (r.ok) {
+        try {
+          window.sessionStorage.setItem("pendingPixPayment", JSON.stringify({
+            charge: r,
+            amount: total,
+            createdAt: Date.now(),
+          }));
+          window.location.assign("/pagamento-pix");
+        } catch {
+          setCharge(r);
+          setNotice("Seu Pix foi gerado. Use o código abaixo para concluir o pagamento.");
+        }
+      } else setNotice(r.error ?? "Não foi possível gerar o Pix.");
     } catch { setNotice("Não foi possível gerar o Pix. Tente novamente."); }
     finally { setPaying(false); }
   };
@@ -246,7 +258,7 @@ return (
             {notice && <p role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">{notice}</p>}
           </section>
 
-          {charge && <PixPayment charge={charge} />}
+          {charge && <PixPayment charge={charge} amount={total} />}
           <div className="flex items-center justify-center gap-1.5 pb-2 text-[10px] text-gray-400">
             <ShieldCheck className="size-3.5" /> Confira seus dados antes de continuar
           </div>
